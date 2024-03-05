@@ -1,0 +1,9 @@
+node_modules/
+dist/
+release/
+yarn-error.log
+artifacts/
+.history
+.envrc
+.tool-versions
+.DS_Store

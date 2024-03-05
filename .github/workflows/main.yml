@@ -1,0 +1,120 @@
+name: Build/release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js, NPM and Yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          architecture: 'x64'
+          cache: 'npm'
+
+      - name: Check if version has been updated # You can edit this
+        id: check # This will be the reference for getting the outputs
+        uses: EndBug/version-check@v1.3.0
+        with:
+          diff-search: true
+          token: ${{ secrets.github_token }}
+
+      - name: Add msbuild to PATH
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v1.3.1
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
+
+      - name: Setup Certificate
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "${{ secrets.SM_CLIENT_CERT_FILE_BASE64 }}" | base64 --decode > /d/Certificate_pkcs12.p12
+        shell: bash
+
+      - name: Set code signing enviroment variables
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo "SM_KEYPAIR_NAME=${{ secrets.SM_KEYPAIR_ALIAS }}" >> "$GITHUB_ENV"
+          echo "SM_HOST=${{ secrets.SM_HOST }}" >> "$GITHUB_ENV"
+          echo "SM_API_KEY=${{ secrets.SM_API_KEY }}" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_FILE=D:\\Certificate_pkcs12.p12" >> "$GITHUB_ENV"
+          echo "SM_CLIENT_CERT_PASSWORD=${{ secrets.SM_CLIENT_CERT_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "C:\Program Files (x86)\Windows Kits\10\App Certification Kit" >> $GITHUB_PATH
+          echo "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.8 Tools" >> $GITHUB_PATH
+          echo "C:\Program Files\DigiCert\DigiCert One Signing Manager Tools" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Setting up code signing tools
+        if: ${{ matrix.os == 'windows-latest' && env.SM_API_KEY != '' }}
+        run: |
+          curl -X GET  https://one.digicert.com/signingmanager/api-ui/v1/releases/smtools-windows-x64.msi/download -H "x-api-key:%SM_API_KEY%" -o smtools-windows-x64.msi
+          msiexec /i smtools-windows-x64.msi /quiet /qn
+          C:\Windows\System32\certutil.exe -csp "DigiCert Signing Manager KSP" -key -user
+        shell: cmd
+
+      - name: Certificates Sync
+        if: ${{ matrix.os == 'windows-latest' && env.SM_API_KEY != '' }}
+        run: |
+          smctl windows certsync
+        shell: cmd
+
+      - name: Install dependencies For Mac OS X
+        run: |
+          npm i dmg-license
+          npm ci
+        if: runner.os == 'macOS'
+
+      - name: Install dependencies For Windows
+        run: |
+          npm ci
+        if: runner.os == 'Windows'
+
+      - name: Build app
+        run: |
+          npm run compile
+      - name: Release app macos
+        run: |
+          npm run release:mac
+        if: runner.os == 'macOS'
+        env:
+          GH_TOKEN: ${{ secrets.my_github_token }}
+          CSC_LINK: ${{ secrets.mac_certs }}
+          CSC_KEY_PASSWORD: ${{ secrets.mac_certs_password }}
+          APPLE_ID: ${{ secrets.apple_id }}
+          APPLE_ID_PASS: ${{ secrets.apple_id_pass }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.apple_app_specific_password }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
+
+      - name: Release app Windows
+        run: |
+          npm run release:win
+        if: runner.os == 'Windows'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.aws_access_key_id }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.aws_secret_access_key }}
+          GH_TOKEN: ${{ secrets.my_github_token }}
+
+      - name: Cleanup artifacts
+        run: |
+          node ./scripts/generate-artifacts ./release ./artifacts
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.os }}
+          path: artifacts

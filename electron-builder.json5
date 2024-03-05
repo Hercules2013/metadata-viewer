@@ -1,0 +1,61 @@
+/**
+ * @see https://www.electron.build/configuration/configuration
+ */
+{
+  productName: 'Google Photos Metadata Fixer',
+  appId: 'io.coderlife.audit.automator.client',
+  compression: 'maximum',
+  directories: {
+    output: 'release',
+  },
+  dmg: {
+    sign: false,
+  },
+  files: ['dist-electron', 'dist'],
+  nsis: {
+    artifactName: 'MetaData-Fixer-${version}-${arch}-${channel}.${ext}',
+    oneClick: true,
+    perMachine: false,
+    allowToChangeInstallationDirectory: false,
+    runAfterFinish: true,
+    deleteAppDataOnUninstall: false,
+    differentialPackage: true,
+  },
+  linux: {
+    target: 'deb',
+    extraResources: ['exiftool.pl/**/*', 'app-files/**/*'],
+  },
+  mac: {
+    artifactName: 'MetaData-Fixer-${version}-${arch}-${channel}.${ext}',
+    notarize: {
+      teamId: 'WAKW7HDQD9',
+    },
+    category: 'public.app-category.utilities',
+    gatekeeperAssess: true,
+    hardenedRuntime: true,
+    entitlements: 'build/entitlements.mac.plist',
+    entitlementsInherit: 'build/entitlements.mac.plist',
+    extraResources: ['exiftool.pl/**/*', 'app-files/**/*'],
+    target: [
+      {
+        target: 'zip',
+        arch: ['x64'],
+      },
+      {
+        target: 'dmg',
+        arch: ['x64'],
+      },
+    ],
+  },
+  win: {
+    target: 'nsis',
+    extraResources: ['exiftool.exe/**/*', 'app-files/**/*'],
+    signingHashAlgorithms: ['sha256'],
+    sign: './scripts/sign.js',
+  },
+  publish: {
+    provider: 's3',
+    bucket: 'metadata-fixer-releases',
+  },
+  generateUpdatesFilesForAllChannels: true,
+}
