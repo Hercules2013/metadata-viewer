@@ -1,45 +1,40 @@
 import React, { useEffect, useState } from 'react';
-import { Heading, VStack, Divider, Box, Flex, Text, Image, Button, ButtonGroup, HStack, Icon, CircularProgress, Input, Center, InputElementProps, UseToastOptions, useToast } from '@chakra-ui/react';
-import { Link } from 'react-router-dom';
-import logo from '@/assets/logo.svg';
-import Layout from './Layout/Layout';
-import { ipcRenderer, shell } from 'electron';
-import {  AiOutlineEdit, AiOutlineFile, AiOutlineFileSearch, AiOutlineFolder, AiOutlineFolderOpen, AiOutlineSave } from 'react-icons/ai';
-import { ExternalLinkIcon } from '@chakra-ui/icons';
-
+import { useSelector, useDispatch } from 'react-redux';
+import { VStack, Divider, Flex, Text, Button, HStack, Icon, CircularProgress, Input, Center } from '@chakra-ui/react';
+import { ipcRenderer } from 'electron';
+import { AiOutlineFile, AiOutlineFolder, AiOutlineFolderOpen } from 'react-icons/ai';
 import PerfectScrollbar from 'react-perfect-scrollbar';
-import { color } from 'framer-motion';
 
-type FolderDetails = {
-  folder: string;
-  files: string[];
-}
+import { selectSource, setSource } from '@/redux/mainReducer';
+import Layout from './Layout/Layout';
 
-type MetaDetail = {
-  index: number;
-  type: string;
-  value: string;
-}
+import { FolderDetails, MetaDetail } from './types';
 
 export function Component() {
-  const toast = useToast();
+  const dispatch = useDispatch();
 
-  const [folder, setFolder] = useState<string>("");
-  const [files, setFiles] = useState<string[]>([]);
+  const srcData = useSelector(selectSource);
+
+  // const [folder, setFolder] = useState<string>("");
+  // const [files, setFiles] = useState<string[]>([]);
   const [curPath, setCurPath] = useState<string>("");
   const [curMeta, setCurMeta] = useState<MetaDetail[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [editable, setEditable] = useState<boolean>(true);
   const [searchText, setSearchText] = useState<string>("");
   const [changed, setChanged] = useState<number[]>([]);
 
   useEffect(() => {
-    ipcRenderer.on('read-folder', (event, data: FolderDetails) => {
-      setFolder(data.folder);
-      setFiles(data.files);
+    ipcRenderer.on('read-folder', (event: unknown, data: FolderDetails) => {
+      // setFolder(data.folder);
+      // setFiles(data.files);
+
+      dispatch(setSource({
+        dir: data.folder,
+        files: data.files
+      }));
     });
 
-    ipcRenderer.on('read-file', (event, data: MetaDetail[]) => {
+    ipcRenderer.on('read-file', (event: unknown, data: MetaDetail[]) => {
       if (loading) return;
 
       setCurMeta(data);
@@ -47,30 +42,16 @@ export function Component() {
     });
   }, []);
 
+  const scanFolder = () => {
+    ipcRenderer.invoke('scan-folder');
+  }
+
   const openFile = (file:string) => () => {
     setLoading(true);
     setCurPath(file);
     ipcRenderer.invoke('scan-file', {
-      path: folder + '\\' + file
+      path: srcData.dir + '\\' + file
     });
-  }
-
-  const handleEditOrSave = async () => {
-    setEditable(!editable);
-
-    if (!editable) {
-      console.log('Saved');
-
-      let command: String = changed.map(index => "-" + curMeta[index].type.replace(/\s+/g, '') + " " + curMeta[index].value + " ").join('');
-      command += folder + '\\' + curPath;
-
-      const res: string = await ipcRenderer.invoke('save-file', { command: command });
-      if (res == "success") {
-        toast({ description: "File has saved successfully.", status: "success" });
-      } else {
-        toast({ description: "Error while saving file.", status: "error" });
-      }
-    }
   }
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,24 +62,27 @@ export function Component() {
     <Layout>
       <Flex w="full">
         <VStack align={'left'}>
-          <HStack style={{ width: 'calc(100vw - 3rem)' }}>
+          <HStack style={{ width: 'calc(100vw - 2rem)' }}>
             <Icon as={AiOutlineFolder} boxSize={8} color={'blue.600'} />
-            <Text>{folder}</Text>
+            <Text flex={1}>{srcData.dir}</Text>
+            <Button colorScheme="blue" mr={4} leftIcon={<AiOutlineFolderOpen />} onClick={scanFolder}>
+              Open Folder
+            </Button>
           </HStack>
           <Divider />
           <HStack h="full">
-            <VStack align={'left'} w="sm">
+            <VStack align={'left'} w="xs">
               {
-                files.length == 0
+                srcData.files.length == 0
                   ? <Center>
                       <VStack>
                         <Icon as={AiOutlineFolderOpen} boxSize={20} color={'blue.600'}></Icon>
-                        <Text fontWeight={'bold'}>File list will be displayed here.</Text>
+                        <Text fontWeight={'bold'}>Media files will be displayed here.</Text>
                       </VStack>
                     </Center>
                   : <PerfectScrollbar>
                       <div style={{ position: 'relative', height: 'calc(100vh - 200px)' }}>
-                        {files.map((file, index) => (
+                        {srcData.files.map((file: string, index: number) => (
                           <HStack 
                             key={'fs' + index}
                             overflow={'hidden'} 
@@ -110,7 +94,7 @@ export function Component() {
                             onClick={openFile(file)}
                             > 
                             <Icon as={AiOutlineFile} boxSize={8} color={'teal.600'} />
-                            <Text >{file}</Text>
+                            <Text textDecoration={curPath == file ? 'underline' : ''}>{file}</Text>
                           </HStack>
                         ))}
                       </div>
@@ -119,21 +103,21 @@ export function Component() {
             </VStack>
             <Divider orientation='vertical' />
             <VStack flex={1}>
-              <Input type='search' placeholder='Search the meta information' onChange={handleSearch} value={searchText} />
+              <Input type='search' placeholder='Search' onChange={handleSearch} value={searchText} />
               <Divider />
               {
                 loading 
-                  ? <Center height={'calc(100vh - 290px)'}>
+                  ? <Center height={'calc(100vh - 240px)'}>
                       <CircularProgress isIndeterminate />
                     </Center>
                   : <PerfectScrollbar style={{ width: '100%' }}>
-                      <div style={{ position: 'relative', height: 'calc(100vh - 290px)' }}>
+                      <div style={{ position: 'relative', height: 'calc(100vh - 240px)' }}>
                         {curMeta.filter(meta => meta.type.toUpperCase().includes(searchText.toUpperCase())).map((meta) => (
                           <HStack mb={1} key={'fd' + meta.index}>
                             <Text w="xs">{meta.type}</Text>
                             <Input 
                               value={meta.value} 
-                              disabled={editable} 
+                              disabled={true} 
                               onChange={(e) => {
                                 const copyOfMeta = [...curMeta];
                                 copyOfMeta[meta.index].value = e.target.value;
@@ -146,17 +130,6 @@ export function Component() {
                       </div>
                     </PerfectScrollbar>
               }
-              <Divider />
-              <Button 
-                colorScheme={!editable ? 'blue' : 'teal'} 
-                width={'full'} 
-                onClick={handleEditOrSave} 
-                leftIcon={editable ? <AiOutlineEdit /> : <AiOutlineSave />}
-                // disabled={curMeta.length === 0}
-                disabled
-              >
-                { editable ? 'Edit' : 'Save' }
-              </Button>
             </VStack>
           </HStack>
         </VStack>

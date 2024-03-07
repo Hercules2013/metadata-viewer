@@ -5,6 +5,7 @@ import { createHashRouter, RouterProvider } from 'react-router-dom';
 // Create the router
 const router = createHashRouter([
   { path: '/', lazy: () => import('./components/Home') },
+  { path: '/changes', lazy: () => import('./components/Changes') },
 ]);
 
 function App() {

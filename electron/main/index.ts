@@ -203,7 +203,7 @@ ipcMain.handle('scan-folder', async (evt, args) => {
     properties: ['openDirectory', 'createDirectory', 'promptToCreate'],
   };
 
-  dialog.showOpenDialog(options).then(async (dir: { canceled: boolean; filePaths?: string[] }) => {
+  return dialog.showOpenDialog(options).then(async (dir: { canceled: boolean; filePaths?: string[] }) => {
     log.info('Chose directory', JSON.stringify(dir));
     if (!dir || dir.canceled || !dir.filePaths) return;
 
@@ -215,11 +215,16 @@ ipcMain.handle('scan-folder', async (evt, args) => {
       console.error(e);
       log.error('Failed to open dialog ', e.toString());
     }
-
+    
     dispatchToMain('read-folder', {
       folder: dir.filePaths[0],
       files: files
     });
+
+    return {
+      folder: dir.filePaths[0],
+      files: files
+    };
   });
 });
 
@@ -261,6 +266,8 @@ ipcMain.handle('scan-file', async (evt, args) => {
   });
 
   dispatchToMain('read-file', formattedData);
+
+  return formattedData;
 });
 
 ipcMain.handle('save-file', async (evt, args) => {

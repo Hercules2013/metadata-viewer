@@ -11,7 +11,7 @@ export default function Layout({
   return (
     <Flex direction="column" height={'100vh'} w="full" bg="white">
       {includeNavbar && <Navbar />}
-      <Flex flex={1} p={6} w="full">
+      <Flex flex={1} p={4} w="full">
         {children}
       </Flex>
     </Flex>

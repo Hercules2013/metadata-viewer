@@ -1970,7 +1970,7 @@ electron$1.ipcMain.handle("scan-folder", async (evt, args) => {
     buttonLabel: "Select",
     properties: ["openDirectory", "createDirectory", "promptToCreate"]
   };
-  electron$1.dialog.showOpenDialog(options).then(async (dir) => {
+  return electron$1.dialog.showOpenDialog(options).then(async (dir) => {
     log.info("Chose directory", JSON.stringify(dir));
     if (!dir || dir.canceled || !dir.filePaths)
       return;
@@ -1985,6 +1985,10 @@ electron$1.ipcMain.handle("scan-folder", async (evt, args) => {
       folder: dir.filePaths[0],
       files
     });
+    return {
+      folder: dir.filePaths[0],
+      files
+    };
   });
 });
 electron$1.ipcMain.handle("scan-file", async (evt, args) => {
@@ -2017,6 +2021,7 @@ electron$1.ipcMain.handle("scan-file", async (evt, args) => {
     };
   });
   dispatchToMain("read-file", formattedData);
+  return formattedData;
 });
 electron$1.ipcMain.handle("save-file", async (evt, args) => {
   const { command } = args;
