@@ -2,7 +2,7 @@
  * @see https://www.electron.build/configuration/configuration
  */
 {
-  productName: 'Google Photos Metadata Fixer',
+  productName: 'Google Photos Metadata Viewer',
   appId: 'io.coderlife.audit.automator.client',
   compression: 'maximum',
   directories: {
@@ -13,7 +13,7 @@
   },
   files: ['dist-electron', 'dist'],
   nsis: {
-    artifactName: 'MetaData-Fixer-${version}-${arch}-${channel}.${ext}',
+    artifactName: 'MetaData-viewer-${version}-${arch}-${channel}.${ext}',
     oneClick: true,
     perMachine: false,
     allowToChangeInstallationDirectory: false,
@@ -26,7 +26,7 @@
     extraResources: ['exiftool.pl/**/*', 'app-files/**/*'],
   },
   mac: {
-    artifactName: 'MetaData-Fixer-${version}-${arch}-${channel}.${ext}',
+    artifactName: 'MetaData-viewer-${version}-${arch}-${channel}.${ext}',
     notarize: {
       teamId: 'WAKW7HDQD9',
     },
@@ -55,7 +55,7 @@
   },
   publish: {
     provider: 's3',
-    bucket: 'metadata-fixer-releases',
+    bucket: 'metadata-viewer-releases',
   },
   generateUpdatesFilesForAllChannels: true,
 }
